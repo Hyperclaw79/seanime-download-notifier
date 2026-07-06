@@ -1,0 +1,32 @@
+{
+  "id": "seanime-download-notifier-dev",
+  "name": "Seanime Download Notifier Dev",
+  "version": "1.0.0",
+  "manifestURI": "",
+  "language": "javascript",
+  "type": "plugin",
+  "description": "Sends notifications when Seanime-tracked torrent downloads complete.",
+  "author": "Hyperclaw79",
+  "icon": "https://raw.githubusercontent.com/Hyperclaw79/seanime-download-notifier/main/assets/logo.png",
+  "website": "https://github.com/Hyperclaw79/seanime-download-notifier",
+  "readme": "",
+  "lang": "en",
+  "payload": "",
+  "payloadURI": "C:\\absolute\\path\\to\\seanime-download-notifier\\dist\\plugin.dev.js",
+  "isDevelopment": true,
+  "userConfig": {
+    "version": 1,
+    "requiresConfig": false,
+    "fields": [
+      { "type": "switch", "name": "enabled", "label": "Plugin enabled", "default": "true" },
+      { "type": "text", "name": "pollIntervalSeconds", "label": "Poll interval (seconds, 15-300)", "default": "30" },
+      { "type": "text", "name": "retentionDays", "label": "Notified record retention (days, 1-365)", "default": "30" },
+      { "type": "switch", "name": "downloadCompletedEnabled", "label": "Download completed notifications", "default": "true" },
+      { "type": "switch", "name": "devEnableSimulationSmokeMode", "label": "Development simulation smoke mode", "default": "false" },
+      { "type": "switch", "name": "devAllowSimulationNotifications", "label": "Allow development simulation notifications", "default": "false" },
+      { "type": "switch", "name": "devUseEmptyNativeSimulationFallback", "label": "Use completed torrent fallback when native simulation finds no candidates", "default": "false" },
+      { "type": "text", "name": "devSimulationDelaySeconds", "label": "Simulation completion delay (seconds, 0-30)", "default": "3" }
+    ]
+  },
+  "plugin": { "version": "1", "permissions": { "scopes": ["storage", "torrent-client"], "allow": { "networkAccess": { "allowedDomains": ["https://discord.com"] } } } }
+}

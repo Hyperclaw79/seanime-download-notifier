@@ -1,0 +1,66 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seanime-download-notifier-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SEANIME_NOTIFIER_RAW_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main
+
+jobs:
+  test:
+    name: Required / Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mock-seanime/package-lock.json
+
+      - name: Install locked dependencies
+        run: |
+          npm ci
+          npm ci --prefix mock-seanime
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint and type check
+        run: |
+          npm run lint
+          npm run typecheck
+
+      - name: Run unit and integration coverage
+        run: npm run test:coverage
+
+      - name: Build plugin, Mock UI, and documentation
+        run: |
+          npm run build:plugin
+          npm run mock:build
+          npm run docs
+          npm run docs:wiki
+
+      - name: Validate manifests
+        run: npm run manifest:validate
+
+      - name: Run Mock UI end-to-end tests
+        run: npm run test:e2e

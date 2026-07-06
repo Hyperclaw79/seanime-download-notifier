@@ -1,0 +1,150 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: seanime-download-notifier-build-${{ forgejo.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  SEANIME_NOTIFIER_RAW_BASE_URL: https://git.home.hthota.com/Hyperclaw79/seanime-download-notifier/raw/branch/main
+  SEANIME_NOTIFIER_RELEASE_BASE_URL: https://git.home.hthota.com/Hyperclaw79/seanime-download-notifier/releases/download
+
+jobs:
+  build:
+    name: Required / Build and test
+    runs-on: node22-bookworm-playwright160
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install locked dependencies
+        run: |
+          npm ci
+          npm ci --prefix mock-seanime
+
+      - name: Lint and type check
+        run: |
+          npm run lint
+          npm run typecheck
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Build plugin, Mock UI, and API documentation
+        run: |
+          npm run build:plugin
+          npm run mock:build
+          npm run docs
+          npm run docs:wiki
+
+      - name: Verify preinstalled Playwright Chromium
+        env:
+          PLAYWRIGHT_PREINSTALLED: "1"
+        run: >-
+          node -e 'const fs = require("fs"); const { chromium } = require("@playwright/test");
+          const executable = chromium.executablePath(); fs.accessSync(executable, fs.constants.X_OK);
+          console.log(executable);'
+
+      - name: Run Mock UI end-to-end tests
+        run: npm run test:e2e
+
+      - name: Validate manifests
+        run: npm run manifest:validate
+
+      - name: Assemble immutable commit build
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          mkdir -p dist/artifact/release
+          cp dist/plugin.js dist/artifact/release/plugin.js
+          npm run manifest:release -- \
+            --base-url="$SEANIME_NOTIFIER_RAW_BASE_URL" \
+            --manifest-url="$SEANIME_NOTIFIER_RELEASE_BASE_URL/v$VERSION/seanime-download-notifier.json" \
+            --payload-url="$SEANIME_NOTIFIER_RELEASE_BASE_URL/v$VERSION/plugin.js" \
+            --output=dist/artifact/release/seanime-download-notifier.json
+          npm run manifest:validate -- dist/artifact/release/seanime-download-notifier.json
+
+          (
+            cd dist/artifact
+            sha256sum \
+              release/plugin.js \
+              release/seanime-download-notifier.json \
+              > release/SHA256SUMS
+          )
+
+          cp -R dist/wiki dist/artifact/wiki
+
+          cat > dist/artifact/BUILD-METADATA <<EOF
+          commit=$FORGEJO_SHA
+          version=$VERSION
+          EOF
+
+          (
+            cd dist/artifact
+            find release wiki -type f -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              > BUILD-SHA256SUMS
+          )
+
+          tar \
+            --sort=name \
+            --mtime='@0' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf dist/seanime-download-notifier-build.tar.gz \
+            -C dist/artifact .
+
+      - name: Publish immutable commit build
+        if: ${{ forgejo.event_name == 'push' }}
+        shell: bash
+        env:
+          PACKAGE_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          test -n "$PACKAGE_TOKEN" || {
+            echo "REGISTRY_TOKEN is required to publish commit build packages."
+            exit 1
+          }
+
+          PACKAGE_OWNER="${FORGEJO_REPOSITORY%%/*}"
+          PACKAGE_NAME="seanime-download-notifier-build"
+          PACKAGE_VERSION="$FORGEJO_SHA"
+          PACKAGE_FILE="seanime-download-notifier-build.tar.gz"
+          PACKAGE_URL="${FORGEJO_SERVER_URL%/}/api/packages/$PACKAGE_OWNER/generic/$PACKAGE_NAME/$PACKAGE_VERSION/$PACKAGE_FILE"
+          UPLOAD_RESPONSE="$(mktemp)"
+
+          STATUS="$(
+            curl -sS \
+              -o "$UPLOAD_RESPONSE" \
+              -w '%{http_code}' \
+              -H "Authorization: token $PACKAGE_TOKEN" \
+              --upload-file "dist/$PACKAGE_FILE" \
+              "$PACKAGE_URL"
+          )"
+
+          if [ "$STATUS" = "201" ]; then
+            echo "Published immutable build package for $PACKAGE_VERSION."
+            exit 0
+          fi
+
+          if [ "$STATUS" = "409" ]; then
+            echo "Build package for $PACKAGE_VERSION already exists; preserving the immutable first build."
+            exit 0
+          fi
+
+          cat "$UPLOAD_RESPONSE" >&2
+          echo "Failed to publish build package. HTTP status: $STATUS" >&2
+          exit 1

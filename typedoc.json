@@ -1,0 +1,49 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/core/config.ts",
+    "src/core/events.ts",
+    "src/core/completion.ts",
+    "src/core/retention.ts",
+    "src/core/scheduler.ts",
+    "src/core/state.ts",
+    "src/providers/discord.ts",
+    "src/seanime/hooks.ts",
+    "src/seanime/torrent-client.ts"
+  ],
+  "out": "docs/api",
+  "tsconfig": "tsconfig.docs.json",
+  "readme": "docs/wiki/index.md",
+  "name": "Seanime Download Notifier",
+  "includeVersion": true,
+  "projectDocuments": ["docs/wiki/index.md"],
+  "excludeInternal": true,
+  "intentionallyNotExported": ["Stored"],
+  "categorizeByGroup": true,
+  "navigation": {
+    "includeGroups": true,
+    "includeFolders": true,
+    "compactFolders": false
+  },
+  "headings": {
+    "document": true,
+    "readme": true
+  },
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "powershell",
+    "yaml",
+    "tsx",
+    "typescript"
+  ],
+  "sidebarLinks": {
+    "Seanime": "https://seanime.app/"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "seanime-download-notifier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sends notifications when Seanime-tracked torrent downloads complete.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:e2e": "playwright test",
+    "mock:dev": "npm --prefix mock-seanime run dev",
+    "mock:build": "npm --prefix mock-seanime run build",
+    "manifest:dev": "tsx scripts/generate-dev-manifest.ts",
+    "manifest:release": "tsx scripts/generate-release-manifest.ts",
+    "manifest:validate": "tsx scripts/validate-manifest.ts",
+    "docs": "typedoc",
+    "docs:wiki": "node scripts/prepare-repository-wiki.mjs",
+    "build:plugin": "tsx scripts/build-plugin.ts",
+    "build": "npm run lint && npm run typecheck && npm run build:plugin && npm run mock:build && npm run docs && npm run docs:wiki && npm run manifest:validate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.60.0",
+    "@types/node": "^24.0.10",
+    "@vitest/coverage-v8": "^3.2.6",
+    "esbuild": "^0.25.6",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "tsx": "^4.20.3",
+    "typedoc": "^0.28.19",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.62.1",
+    "vitest": "^3.2.6"
+  }
+}

@@ -1,0 +1,115 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seanime-download-notifier-github-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  SEANIME_NOTIFIER_RAW_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main
+
+jobs:
+  release:
+    name: Required / Publish release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mock-seanime/package-lock.json
+
+      - name: Install locked dependencies
+        run: |
+          npm ci
+          npm ci --prefix mock-seanime
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate tag and package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported release tag: $TAG" >&2
+            exit 1
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "${TAG#v}" != "$VERSION" ]; then
+            echo "Tag $TAG does not match package version $VERSION." >&2
+            exit 1
+          fi
+
+      - name: Run release validation
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:coverage
+          npm run build:plugin
+          npm run mock:build
+          npm run docs
+          npm run docs:wiki
+          npm run manifest:validate
+          npm run test:e2e
+
+      - name: Assemble GitHub release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          RAW_BASE_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main"
+          RELEASE_BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}"
+
+          mkdir -p dist/github-release
+          cp dist/plugin.js dist/github-release/plugin.js
+          npm run manifest:release -- \
+            --base-url="$RAW_BASE_URL" \
+            --manifest-url="$RELEASE_BASE_URL/seanime-download-notifier.json" \
+            --payload-url="$RELEASE_BASE_URL/plugin.js" \
+            --output=dist/github-release/seanime-download-notifier.json
+          npm run manifest:validate -- dist/github-release/seanime-download-notifier.json
+
+          tar -czf dist/github-release/docs-wiki.tar.gz -C dist wiki
+          (
+            cd dist/github-release
+            sha256sum \
+              plugin.js \
+              seanime-download-notifier.json \
+              docs-wiki.tar.gz \
+              > SHA256SUMS
+          )
+
+      - name: Create or update GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/github-release/* --clobber
+          else
+            gh release create "$TAG" dist/github-release/* \
+              --verify-tag \
+              --title "Release $TAG" \
+              --notes "Seanime Download Notifier $TAG"
+          fi

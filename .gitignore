@@ -1,0 +1,12 @@
+node_modules/
+mock-seanime/node_modules/
+dist/
+coverage/
+docs/api/
+playwright-report/
+test-results/
+seanime-download-notifier.json
+seanime-download-notifier-dev.json
+*.log
+.DS_Store
+*.zip

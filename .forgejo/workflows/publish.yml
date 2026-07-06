@@ -1,0 +1,147 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: seanime-download-notifier-publish-${{ forgejo.ref_name }}
+  cancel-in-progress: false
+
+env:
+  CI: "true"
+
+jobs:
+  publish:
+    name: Required / Publish release
+    runs-on: node22-bookworm
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_TAG="${FORGEJO_REF_NAME:-${GITHUB_REF_NAME:-}}"
+
+          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported release tag: ${RELEASE_TAG:-<empty>}"
+            exit 1
+          fi
+
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "Resolved release tag: $RELEASE_TAG"
+
+      - name: Validate tag and project version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin main:refs/remotes/origin/main
+
+          git merge-base --is-ancestor "$FORGEJO_SHA" origin/main || {
+            echo "Release tags must point at commits reachable from main."
+            exit 1
+          }
+
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${RELEASE_TAG#v}"
+
+          [[ "$TAG_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+          test "$TAG_VERSION" = "$VERSION" || {
+            echo "Tag version $TAG_VERSION does not match package version $VERSION."
+            exit 1
+          }
+
+      - name: Download commit build
+        shell: bash
+        env:
+          PACKAGE_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          test -n "$PACKAGE_TOKEN" || {
+            echo "REGISTRY_TOKEN is required to download commit build packages."
+            exit 1
+          }
+
+          PACKAGE_OWNER="${FORGEJO_REPOSITORY%%/*}"
+          PACKAGE_NAME="seanime-download-notifier-build"
+          PACKAGE_VERSION="$FORGEJO_SHA"
+          PACKAGE_FILE="seanime-download-notifier-build.tar.gz"
+          PACKAGE_URL="${FORGEJO_SERVER_URL%/}/api/packages/$PACKAGE_OWNER/generic/$PACKAGE_NAME/$PACKAGE_VERSION/$PACKAGE_FILE"
+          VERSION="$(node -p "require('./package.json').version")"
+
+          mkdir -p dist/built
+          curl -fsS \
+            --retry 60 \
+            --retry-delay 10 \
+            --retry-max-time 900 \
+            --retry-all-errors \
+            -H "Authorization: token $PACKAGE_TOKEN" \
+            "$PACKAGE_URL" \
+            -o "dist/$PACKAGE_FILE"
+          tar -xzf "dist/$PACKAGE_FILE" -C dist/built
+
+          grep -Fx "commit=$FORGEJO_SHA" dist/built/BUILD-METADATA
+          grep -Fx "version=$VERSION" dist/built/BUILD-METADATA
+          (
+            cd dist/built
+            sha256sum -c BUILD-SHA256SUMS
+            sha256sum -c release/SHA256SUMS
+          )
+
+      - name: Publish documentation to Forgejo Wiki
+        shell: bash
+        env:
+          WIKI_ACTOR: ${{ forgejo.actor }}
+          WIKI_TOKEN: ${{ forgejo.token }}
+        run: |
+          set -euo pipefail
+
+          WIKI_URL="${FORGEJO_SERVER_URL%/}/${FORGEJO_REPOSITORY}.wiki.git"
+          BASIC_AUTH="$(printf '%s:%s' "$WIKI_ACTOR" "$WIKI_TOKEN" | base64 | tr -d '\n')"
+          echo "::add-mask::$BASIC_AUTH"
+
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.extraHeader
+          export GIT_CONFIG_VALUE_0="Authorization: Basic $BASIC_AUTH"
+
+          if ! git clone "$WIKI_URL" dist/forgejo-wiki; then
+            echo "Unable to clone the Forgejo Wiki. Enable the repository's integrated wiki before publishing a release." >&2
+            exit 1
+          fi
+
+          find dist/forgejo-wiki -maxdepth 1 -type f -name '*.md' -delete
+          cp dist/built/wiki/*.md dist/forgejo-wiki/
+
+          git -C dist/forgejo-wiki config user.name "forgejo-actions"
+          git -C dist/forgejo-wiki config user.email "forgejo-actions@noreply.local"
+          git -C dist/forgejo-wiki add --all
+
+          if git -C dist/forgejo-wiki diff --cached --quiet; then
+            echo "Forgejo Wiki is already current."
+          else
+            git -C dist/forgejo-wiki commit -m "docs: publish $RELEASE_TAG"
+            git -C dist/forgejo-wiki push origin HEAD:main
+          fi
+
+      - name: Publish Forgejo release assets
+        uses: https://data.forgejo.org/actions/forgejo-release@5c6400d8716a75c2cd219f55ae9401f145209449 # v2.9.1
+        with:
+          direction: upload
+          url: ${{ forgejo.server_url }}
+          repo: ${{ forgejo.repository }}
+          token: ${{ forgejo.token }}
+          tag: ${{ env.RELEASE_TAG }}
+          release-dir: dist/built/release
+          release-notes: Release ${{ env.RELEASE_TAG }}
+          override: true
