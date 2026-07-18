@@ -46,7 +46,9 @@ Run `npm run manifest:validate` after any manifest or generator change.
 
 ## CI pipeline
 
-Branch and pull-request CI installs locked dependencies, lints, type-checks, runs coverage and browser E2E, builds both UIs, generates the TypeDoc API reference, and validates manifests. A successful commit build is stored as a commit-addressed Generic Package Registry bundle so release automation can reuse the exact verified output.
+Branch and pull-request CI installs locked dependencies, lints, type-checks, runs coverage and browser E2E, builds both UIs, generates the TypeDoc API reference, and validates manifests. The workflows run for pull requests targeting `develop` or `main`, and for direct pushes to those two long-lived branches. This checks proposed changes before merge and then checks the exact integrated commit after merge.
+
+On Forgejo push builds, a successful integrated commit build is stored as a commit-addressed Generic Package Registry bundle so release automation can reuse the exact verified output. Pull-request builds validate the code but do not publish commit build packages.
 
 A matching `vMAJOR.MINOR.PATCH` tag creates permanent release assets:
 

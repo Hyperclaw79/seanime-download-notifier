@@ -6,6 +6,7 @@ children:
   Denshi runtime isolation: runtime-isolation.md
   Provider development: providers.md
   Development and testing: development-testing.md
+  Contributing workflow: contributing.md
   Manifests and releases: manifests-deployment.md
 ---
 
@@ -22,6 +23,7 @@ This handbook explains how the plugin works, why its unusual runtime boundaries 
 | Change a registered hook or the plugin webview | [Denshi runtime isolation](runtime-isolation.md) |
 | Add a notification provider | [Provider development](providers.md) |
 | Run focused tests or diagnose a failure | [Development and testing](development-testing.md) |
+| Open a pull request or understand branch flow | [Contributing workflow](contributing.md) |
 | Change URLs, manifests, CI, or release artifacts | [Manifests and releases](manifests-deployment.md) |
 
 ## Product boundary

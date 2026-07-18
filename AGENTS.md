@@ -25,6 +25,18 @@ Run `npm run manifest:dev` after a manifest-affecting change. For local Denshi t
 
 The released production manifest is Seanime's stable install/update endpoint. Its manifest and payload URLs must target immutable release assets for the matching `package.json` version. Tag CI reuses the verified commit build, then publishes the bundle, manifest, documentation, and checksums. Action-run artifacts are temporary diagnostics and must never be used as install URLs.
 
+## Branching, remotes, and promotion
+
+- `develop` is the integration branch.
+- `main` is the release branch.
+- External GitHub contributors should fork the repository and open pull requests against `develop`.
+- Push routine maintainer work to Forgejo `develop` first. Treat Forgejo as the beta/RC mirror.
+- Do not push to GitHub unless the user explicitly asks. GitHub is the public/community publishing target.
+- Promote changes to `main` through pull requests after validation on `develop`.
+- Use normal commits going forward. Do not amend, squash, rebase, or preserve a single-commit history unless the user explicitly asks.
+
+Build workflows run on pull requests targeting `develop` or `main`, and on direct pushes to those two long-lived branches. This keeps PR validation and post-merge integrated-commit validation while avoiding full CI for every feature-branch push.
+
 ## Runtime architecture
 
 `src/plugin.ts` must stay a small registration entrypoint. It defines shared provider factories, then directly registers the isolated Auto Downloader hooks and UI callback.

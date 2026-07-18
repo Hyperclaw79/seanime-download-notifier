@@ -57,6 +57,17 @@ Each track has its own identity token. A stale poll or a development simulation 
 
 ## Development
 
+### Branching model
+
+The public repository uses `develop` as the integration branch and `main` as the release branch.
+
+- External contributors should fork the repository and open pull requests against `develop`.
+- Maintainer work is pushed to the maintainer Forgejo `develop` branch first for beta/RC validation.
+- Changes are promoted to `main` through pull requests after they are validated on `develop`.
+- GitHub receives public/community updates when the maintainer intentionally pushes or promotes them; it is not the automatic first stop for day-to-day beta work.
+
+CI runs on pull requests targeting `develop` or `main`, and on direct pushes to those two long-lived branches. This avoids running the full build for every feature-branch push while still checking the exact integrated commit after a merge.
+
 ### Requirements
 
 - Node.js 20 or newer
@@ -166,9 +177,9 @@ The release manifest is the stable Seanime install and update endpoint. It is ge
 npm run manifest:release -- --base-url=https://raw.githubusercontent.com/Hyperclaw79/seanime-download-notifier/main --manifest-url=https://github.com/Hyperclaw79/seanime-download-notifier/releases/download/v1.0.0/seanime-download-notifier.json --payload-url=https://github.com/Hyperclaw79/seanime-download-notifier/releases/download/v1.0.0/plugin.js
 ```
 
-GitHub Actions run linting, type checking, coverage, builds, manifest validation, TypeDoc generation, and Mock UI E2E for public branches and pull requests. Pushing a matching `vMAJOR.MINOR.PATCH` tag on GitHub publishes `plugin.js`, the generated manifest, checksums, and a Markdown documentation archive to the GitHub release. The tag is rejected when it differs from `package.json`.
+GitHub Actions run linting, type checking, coverage, builds, manifest validation, TypeDoc generation, and Mock UI E2E for `develop`, `main`, and pull requests targeting either branch. Pushing a matching `vMAJOR.MINOR.PATCH` tag on GitHub publishes `plugin.js`, the generated manifest, checksums, and a Markdown documentation archive to the GitHub release. The tag is rejected when it differs from `package.json`.
 
-The maintainer Forgejo workflows use the same generated-manifest model for the maintainer-hosted release path. They are intentionally separate from the public GitHub workflows so private hosting details stay out of the public install instructions.
+The maintainer Forgejo workflows use the same generated-manifest model for the maintainer-hosted release path. Forgejo is the maintainer beta/RC mirror: changes land there first, then move to GitHub only when the maintainer intentionally publishes them. The workflows are intentionally separate from the public GitHub workflows so private hosting details stay out of the public install instructions.
 
 Seanime loads extension icons as external browser images. The raw host serving `assets/logo.png` must send CORS headers; GitHub raw does this by default, but a private Forgejo host may need CORS enabled for raw asset responses.
 
@@ -176,7 +187,7 @@ Before publishing, verify the manifest and payload URLs, install the release man
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep changes provider-neutral outside `src/providers/`, preserve the isolated callback boundary, and add regression coverage for retry, de-duplication, and concurrent-track behavior when relevant.
+Issues and pull requests are welcome. Please fork the GitHub repository and open pull requests against `develop`; `main` is reserved for release promotion. Keep changes provider-neutral outside `src/providers/`, preserve the isolated callback boundary, and add regression coverage for retry, de-duplication, and concurrent-track behavior when relevant.
 
 Before opening a pull request, run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run test:e2e`. Also run `npm run manifest:validate` for manifest changes and `npm run docs` for public API changes. Never commit webhook URLs, generated manifests, or local absolute paths.
 
