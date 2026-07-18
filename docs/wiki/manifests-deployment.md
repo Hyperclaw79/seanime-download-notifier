@@ -56,7 +56,7 @@ A matching `vMAJOR.MINOR.PATCH` tag creates permanent release assets:
 - verified production manifest;
 - SHA-256 checksums.
 
-The release workflow also publishes the Markdown handbook from `docs/wiki` to the repository Wiki. The manifest's `readme` field points to that rendered Wiki URL. TypeDoc HTML remains a CI validation output because repository wikis render Markdown; they are not necessarily static HTML hosts.
+The release workflows also publish the Markdown handbook from `docs/wiki` to the matching repository Wiki. The manifest's `readme` field points to that rendered Wiki URL. TypeDoc HTML remains a CI validation output because repository wikis render Markdown; they are not necessarily static HTML hosts.
 
 The release job rejects a tag that differs from `package.json`; the generated manifest from the verified commit build is the manifest that gets released.
 

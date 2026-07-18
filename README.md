@@ -177,7 +177,7 @@ The release manifest is the stable Seanime install and update endpoint. It is ge
 npm run manifest:release -- --base-url=https://raw.githubusercontent.com/Hyperclaw79/seanime-download-notifier/main --manifest-url=https://github.com/Hyperclaw79/seanime-download-notifier/releases/download/v1.0.0/seanime-download-notifier.json --payload-url=https://github.com/Hyperclaw79/seanime-download-notifier/releases/download/v1.0.0/plugin.js
 ```
 
-GitHub Actions run linting, type checking, coverage, builds, manifest validation, TypeDoc generation, and Mock UI E2E for `develop`, `main`, and pull requests targeting either branch. Pushing a matching `vMAJOR.MINOR.PATCH` tag on GitHub publishes `plugin.js`, the generated manifest, checksums, and a Markdown documentation archive to the GitHub release. The tag is rejected when it differs from `package.json`.
+GitHub Actions run linting, type checking, coverage, builds, manifest validation, TypeDoc generation, and Mock UI E2E for `develop`, `main`, and pull requests targeting either branch. Pushing a matching `vMAJOR.MINOR.PATCH` tag on GitHub publishes `plugin.js`, the generated manifest, checksums, and the Markdown handbook to the GitHub Wiki. The tag is rejected when it differs from `package.json`.
 
 The maintainer Forgejo workflows use the same generated-manifest model for the maintainer-hosted release path. Forgejo is the maintainer beta/RC mirror: changes land there first, then move to GitHub only when the maintainer intentionally publishes them. The workflows are intentionally separate from the public GitHub workflows so private hosting details stay out of the public install instructions.
 

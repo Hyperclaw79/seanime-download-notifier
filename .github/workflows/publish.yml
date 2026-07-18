@@ -88,15 +88,50 @@ jobs:
             --output=dist/github-release/seanime-download-notifier.json
           npm run manifest:validate -- dist/github-release/seanime-download-notifier.json
 
-          tar -czf dist/github-release/docs-wiki.tar.gz -C dist wiki
           (
             cd dist/github-release
             sha256sum \
               plugin.js \
               seanime-download-notifier.json \
-              docs-wiki.tar.gz \
               > SHA256SUMS
           )
+
+      - name: Publish documentation to GitHub Wiki
+        shell: bash
+        env:
+          WIKI_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          WIKI_URL="https://github.com/${GITHUB_REPOSITORY}.wiki.git"
+          BASIC_AUTH="$(printf 'x-access-token:%s' "$WIKI_TOKEN" | base64 -w 0)"
+          echo "::add-mask::$BASIC_AUTH"
+
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.extraHeader
+          export GIT_CONFIG_VALUE_0="Authorization: Basic $BASIC_AUTH"
+
+          if ! git clone "$WIKI_URL" dist/github-wiki; then
+            mkdir -p dist/github-wiki
+            git -C dist/github-wiki init
+            git -C dist/github-wiki checkout -b master
+            git -C dist/github-wiki remote add origin "$WIKI_URL"
+          fi
+
+          WIKI_BRANCH="$(git -C dist/github-wiki symbolic-ref --quiet --short HEAD || echo master)"
+          find dist/github-wiki -maxdepth 1 -type f -name '*.md' -delete
+          cp dist/wiki/*.md dist/github-wiki/
+
+          git -C dist/github-wiki config user.name "github-actions[bot]"
+          git -C dist/github-wiki config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C dist/github-wiki add --all
+
+          if git -C dist/github-wiki diff --cached --quiet; then
+            echo "GitHub Wiki is already current."
+          else
+            git -C dist/github-wiki commit -m "docs: publish ${GITHUB_REF_NAME}"
+            git -C dist/github-wiki push origin "HEAD:$WIKI_BRANCH"
+          fi
 
       - name: Create or update GitHub release
         shell: bash
