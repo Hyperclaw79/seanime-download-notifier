@@ -40,6 +40,8 @@ Global behavior such as polling interval and retention remains in Seanime's gene
 
 ## Discord notifications
 
+![Discord completion notification embed with anime metadata, release details, and episode artwork](assets/screenshots/discord-provider-embed.png)
+
 Detailed embeds can include:
 
 - anime title, format, year, runtime, score, and genres;
